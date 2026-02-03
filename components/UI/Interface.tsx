@@ -8,48 +8,75 @@ import { AudioVisualizer } from './AudioVisualizer';
 import { DEFAULT_REACTIONS, TRANSLATIONS } from '../../constants';
 import { audioSynth } from '../../services/AudioSynthesizer';
 
-// --- New Invisible Mobile Movement Layer ---
-const MobileMovementLayer = ({ setControls }: { setControls: (c: { forward: number, turn: number }) => void }) => {
-    const startY = useRef<number | null>(null);
-    const startX = useRef<number | null>(null);
+// --- Visual Joystick for Mobile ---
+const Joystick = ({ setControls }: { setControls: (c: { forward: number, turn: number }) => void }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const stickRef = useRef<HTMLDivElement>(null);
+    const [isActive, setIsActive] = useState(false);
     
     const handleStart = (e: React.TouchEvent) => {
-        // Prevent default to stop scrolling/highlighting
-        // e.preventDefault(); 
-        startY.current = e.touches[0].clientY;
-        startX.current = e.touches[0].clientX;
+        setIsActive(true);
+        handleMove(e);
     };
 
     const handleMove = (e: React.TouchEvent) => {
-        if (startY.current === null || startX.current === null) return;
+        if (!containerRef.current || !stickRef.current) return;
+        const touch = e.touches[0];
+        const rect = containerRef.current.getBoundingClientRect();
         
-        const deltaY = startY.current - e.touches[0].clientY; // Positive = Dragging Up
-        const deltaX = e.touches[0].clientX - startX.current; // Positive = Dragging Right
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        const dx = x - centerX;
+        const dy = y - centerY;
+        
+        const distance = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
+        const angle = Math.atan2(dy, dx);
+        
+        const stickX = distance * Math.cos(angle);
+        const stickY = distance * Math.sin(angle);
+        
+        stickRef.current.style.transform = `translate(${stickX}px, ${stickY}px)`;
+        
+        // Normalize outputs (-1 to 1)
+        // Up should be positive for logic, but screen Y is down positive.
+        // Forward: -y (screen up)
+        // Turn: -x (screen left)
+        const forward = -(dy / 40); 
+        const turn = -(dx / 40);
+        
+        // Deadzone
+        const fVal = Math.abs(forward) < 0.2 ? 0 : forward;
+        const tVal = Math.abs(turn) < 0.2 ? 0 : turn;
 
-        const maxDist = 50; 
-        
-        let forward = Math.max(-1, Math.min(1, deltaY / maxDist));
-        let turn = Math.max(-1, Math.min(1, -deltaX / maxDist)); 
-        
-        if (Math.abs(forward) < 0.2) forward = 0;
-        if (Math.abs(turn) < 0.2) turn = 0;
-
-        setControls({ forward, turn });
+        setControls({ forward: fVal, turn: tVal });
     };
 
     const handleEnd = () => {
-        startY.current = null;
-        startX.current = null;
+        setIsActive(false);
+        if (stickRef.current) {
+            stickRef.current.style.transform = `translate(0px, 0px)`;
+        }
         setControls({ forward: 0, turn: 0 });
     };
 
     return (
         <div 
-            className="absolute top-1/2 left-0 w-1/2 h-1/2 z-30 pointer-events-auto touch-none select-none"
+            className="absolute bottom-6 left-6 w-32 h-32 z-50 pointer-events-auto touch-none select-none flex items-center justify-center"
             onTouchStart={handleStart}
             onTouchMove={handleMove}
             onTouchEnd={handleEnd}
-        />
+        >
+            <div ref={containerRef} className="w-24 h-24 bg-white/10 border-2 border-white/20 rounded-full backdrop-blur-sm relative flex items-center justify-center">
+                <div 
+                    ref={stickRef} 
+                    className={`w-10 h-10 rounded-full shadow-lg transition-transform duration-75 ${isActive ? 'bg-blue-500' : 'bg-white/50'}`}
+                />
+            </div>
+        </div>
     );
 };
 
@@ -110,7 +137,8 @@ export const Interface = () => {
     setControls,
     triggerReaction,
     selectedMicId, selectedSpeakerId, setAudioDevice,
-    toggleRoomSubscription, localPlayer, language
+    toggleRoomSubscription, localPlayer, language,
+    isLocalPlayerMoving
   } = useStore();
 
   const [showFriendsList, setShowFriendsList] = useState(false);
@@ -126,7 +154,6 @@ export const Interface = () => {
   const idleTimer = useRef<any>(null);
   const isUIOpenRef = useRef(false);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
   const cinemaVideoRef = useRef<HTMLVideoElement>(null);
 
   const room = activeRoomId ? rooms[activeRoomId] : null;
@@ -158,7 +185,7 @@ export const Interface = () => {
   // --- Idle Logic (Dock Hiding) ---
   useEffect(() => {
     isUIOpenRef.current = isUIOpen;
-    if (isUIOpenRef.current || localPlayer.isMoving) {
+    if (isUIOpenRef.current || isLocalPlayerMoving) {
         setIsIdle(false);
         if (idleTimer.current) clearTimeout(idleTimer.current);
     } else {
@@ -168,7 +195,7 @@ export const Interface = () => {
             setIsIdle(true);
         }, 3000); // 3 seconds to hide
     }
-  }, [isUIOpen, localPlayer.isMoving]);
+  }, [isUIOpen, isLocalPlayerMoving]);
 
   // Wake up listener with exclusion logic
   useEffect(() => {
@@ -204,10 +231,6 @@ export const Interface = () => {
   }, [showSettingsModal]);
 
   useEffect(() => {
-    if (screenShareEnabled && screenStream && videoRef.current) videoRef.current.srcObject = screenStream;
-  }, [screenShareEnabled, screenStream]);
-
-  useEffect(() => {
     if (cinemaMode && screenStream && cinemaVideoRef.current) cinemaVideoRef.current.srcObject = screenStream;
   }, [cinemaMode, screenStream]);
 
@@ -229,8 +252,8 @@ export const Interface = () => {
 
   return (
     <>
-      {/* Mobile Controls Layer - Invisible */}
-      <MobileMovementLayer setControls={setControls} />
+      {/* Mobile Controls Layer - Visible Joystick */}
+      <Joystick setControls={setControls} />
 
       {/* Friend Request Modal */}
       {incomingFriendRequest && (
@@ -324,7 +347,7 @@ export const Interface = () => {
                   </div>
 
                 {/* MODAL in Interface.tsx is strictly for viewing Room Info while IN-GAME */}
-                {/* MATCHED STYLE WITH LOBBY CARD */}
+                {/* Updated: Wider, Grid Layout */}
                 {showRoomInfo && (
                     <div 
                         className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm md:absolute md:inset-auto md:top-20 md:left-4 md:bg-transparent md:backdrop-blur-none"
@@ -332,7 +355,7 @@ export const Interface = () => {
                     >
                         <div 
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full max-w-sm bg-black/90 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl animate-fade-in text-left relative"
+                            className="w-full max-w-2xl bg-black/95 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl animate-fade-in text-left relative"
                         >
                             {/* Header Gradient */}
                             <div 
@@ -343,74 +366,86 @@ export const Interface = () => {
                                     <XMarkIcon className="w-5 h-5" />
                                 </button>
                                 <div className="absolute bottom-3 left-4">
-                                    <h3 className="font-black text-2xl drop-shadow-md text-white leading-none">{getRoomName(room)}</h3>
+                                    <h3 className="font-black text-3xl drop-shadow-md text-white leading-none">{getRoomName(room)}</h3>
                                 </div>
                             </div>
 
-                            <div className="p-5">
-                                <p className="text-sm text-gray-300 mb-6 leading-relaxed">{getRoomDesc(room)}</p>
-                                
-                                {/* Stats */}
-                                <div className="grid grid-cols-3 gap-2 text-xs mb-4">
-                                    <div className="bg-black border border-white/10 p-2 rounded-lg flex flex-col items-center">
-                                        <span className="text-gray-500 uppercase block mb-1 font-bold text-[10px]">{t('online')}</span>
-                                        <span className="font-bold text-lg">{room.currentPlayers}</span>
-                                    </div>
-                                    <div className="bg-black border border-white/10 p-2 rounded-lg flex flex-col items-center">
-                                        <span className="text-gray-500 uppercase block mb-1 font-bold text-[10px]">{t('saved')}</span>
-                                        <span className="font-bold text-lg">{room.subscribers.length}</span>
-                                    </div>
-                                    <div className="bg-black border border-white/10 p-2 rounded-lg flex flex-col items-center">
-                                        <span className="text-gray-500 uppercase block mb-1 font-bold text-[10px]">{t('friends_btn')}</span>
-                                        <span className="font-bold text-lg">{friendsInSelectedRoom.length}</span>
-                                    </div>
-                                </div>
-
-                                {/* Rules */}
-                                <div className="space-y-2 mb-4">
-                                     <div className="flex items-center justify-between p-2 rounded-lg bg-black border border-white/10">
-                                          <div className="flex items-center gap-2">
-                                              <ComputerDesktopIcon className={`w-4 h-4 ${room.rules.allowScreenShare ? 'text-green-400' : 'text-red-400'}`} />
-                                              <span className="text-xs font-bold text-gray-300">Screen Share</span>
-                                          </div>
-                                          <div className={`w-2 h-2 rounded-full ${room.rules.allowScreenShare ? 'bg-green-500' : 'bg-red-500'}`} />
-                                     </div>
-                                     <div className="flex items-center justify-between p-2 rounded-lg bg-black border border-white/10">
-                                          <div className="flex items-center gap-2">
-                                              <MicrophoneIcon className={`w-4 h-4 ${!room.rules.forbidMicMute ? 'text-green-400' : 'text-red-400'}`} />
-                                              <span className="text-xs font-bold text-gray-300">Mute Mic</span>
-                                          </div>
-                                          <div className={`w-2 h-2 rounded-full ${!room.rules.forbidMicMute ? 'bg-green-500' : 'bg-red-500'}`} />
-                                     </div>
-                                     <div className="flex items-center justify-between p-2 rounded-lg bg-black border border-white/10">
-                                          <div className="flex items-center gap-2">
-                                              <EyeSlashIcon className={`w-4 h-4 ${!room.rules.preventIgnoring ? 'text-green-400' : 'text-red-400'}`} />
-                                              <span className="text-xs font-bold text-gray-300">Ignore Users</span>
-                                          </div>
-                                          <div className={`w-2 h-2 rounded-full ${!room.rules.preventIgnoring ? 'bg-green-500' : 'bg-red-500'}`} />
-                                     </div>
-                                </div>
-                                
-                                {room.isPrivate && (
-                                    <div 
-                                        onClick={handleCopyId}
-                                        className="mb-4 bg-black border border-white/10 p-3 rounded-lg cursor-copy hover:bg-white/5 transition flex justify-between items-center"
-                                    >
-                                        <div>
-                                            <div className="text-[10px] text-gray-500 uppercase">Room ID</div>
-                                            <div className="font-mono text-xs text-white">{room.id}</div>
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Left Column: Description & Stats */}
+                                <div className="flex flex-col gap-4">
+                                    <p className="text-sm text-gray-300 leading-relaxed min-h-[60px]">{getRoomDesc(room)}</p>
+                                    
+                                    {/* Stats */}
+                                    <div className="grid grid-cols-3 gap-2 text-xs">
+                                        <div className="bg-black border border-white/10 p-3 rounded-lg flex flex-col items-center">
+                                            <span className="text-gray-500 uppercase block mb-1 font-bold text-[10px]">{t('online')}</span>
+                                            <span className="font-bold text-lg">{room.currentPlayers}</span>
                                         </div>
-                                        {copiedId ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardDocumentIcon className="w-4 h-4 text-gray-400" />}
+                                        <div className="bg-black border border-white/10 p-3 rounded-lg flex flex-col items-center">
+                                            <span className="text-gray-500 uppercase block mb-1 font-bold text-[10px]">{t('saved')}</span>
+                                            <span className="font-bold text-lg">{room.subscribers.length}</span>
+                                        </div>
+                                        <div className="bg-black border border-white/10 p-3 rounded-lg flex flex-col items-center">
+                                            <span className="text-gray-500 uppercase block mb-1 font-bold text-[10px]">{t('friends_btn')}</span>
+                                            <span className="font-bold text-lg">{friendsInSelectedRoom.length}</span>
+                                        </div>
                                     </div>
-                                )}
+                                </div>
 
-                                <button 
-                                    onClick={() => { audioSynth.playUiClick(); toggleRoomSubscription(room.id); }}
-                                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition border ${room.subscribers.includes(localPlayer.id) ? 'bg-white text-black border-white' : 'border-white/30 hover:bg-white/10 text-white'}`}
-                                >
-                                    {room.subscribers.includes(localPlayer.id) ? <BookmarkSolid className="w-4 h-4"/> : <BookmarkOutline className="w-4 h-4"/>}
-                                    {room.subscribers.includes(localPlayer.id) ? t('saved') : t('save')}
-                                </button>
+                                {/* Right Column: Rules & Actions */}
+                                <div className="flex flex-col gap-4">
+                                    {/* Rules */}
+                                    <div className="space-y-2 flex-1">
+                                        <div className="flex items-center justify-between p-2 rounded-lg bg-black border border-white/10">
+                                            <div className="flex items-center gap-2">
+                                                <ComputerDesktopIcon className={`w-4 h-4 ${room.rules.allowScreenShare ? 'text-green-400' : 'text-red-400'}`} />
+                                                <span className="text-xs font-bold text-gray-300">Screen Share</span>
+                                            </div>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${room.rules.allowScreenShare ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                {room.rules.allowScreenShare ? 'Allowed' : 'Forbidden'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-2 rounded-lg bg-black border border-white/10">
+                                            <div className="flex items-center gap-2">
+                                                <MicrophoneIcon className={`w-4 h-4 ${!room.rules.forbidMicMute ? 'text-green-400' : 'text-red-400'}`} />
+                                                <span className="text-xs font-bold text-gray-300">Mute Mic</span>
+                                            </div>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${!room.rules.forbidMicMute ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                {!room.rules.forbidMicMute ? 'Allowed' : 'Forbidden'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-2 rounded-lg bg-black border border-white/10">
+                                            <div className="flex items-center gap-2">
+                                                <EyeSlashIcon className={`w-4 h-4 ${!room.rules.preventIgnoring ? 'text-green-400' : 'text-red-400'}`} />
+                                                <span className="text-xs font-bold text-gray-300">Ignore Users</span>
+                                            </div>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${!room.rules.preventIgnoring ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                {!room.rules.preventIgnoring ? 'Allowed' : 'Forbidden'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    {room.isPrivate && (
+                                        <div 
+                                            onClick={handleCopyId}
+                                            className="bg-black border border-white/10 p-3 rounded-lg cursor-copy hover:bg-white/5 transition flex justify-between items-center"
+                                        >
+                                            <div>
+                                                <div className="text-[10px] text-gray-500 uppercase">Room ID</div>
+                                                <div className="font-mono text-xs text-white">{room.id}</div>
+                                            </div>
+                                            {copiedId ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardDocumentIcon className="w-4 h-4 text-gray-400" />}
+                                        </div>
+                                    )}
+
+                                    <button 
+                                        onClick={() => { audioSynth.playUiClick(); toggleRoomSubscription(room.id); }}
+                                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition border ${room.subscribers.includes(localPlayer.id) ? 'bg-white text-black border-white' : 'border-white/30 hover:bg-white/10 text-white'}`}
+                                    >
+                                        {room.subscribers.includes(localPlayer.id) ? <BookmarkSolid className="w-4 h-4"/> : <BookmarkOutline className="w-4 h-4"/>}
+                                        {room.subscribers.includes(localPlayer.id) ? t('saved') : t('save')}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -473,16 +508,7 @@ export const Interface = () => {
 
       {/* UI Overlay Bottom */}
       <div className="absolute inset-0 pointer-events-none flex flex-col justify-end pb-6 md:pb-8 z-40 safe-bottom landscape:scale-90 landscape:origin-bottom">
-        {screenShareEnabled && !cinemaMode && (
-          <div 
-            onClick={() => setCinemaMode(true)}
-            className={`absolute top-24 md:top-24 left-4 w-32 md:w-64 aspect-video bg-black rounded-lg border border-white/20 overflow-hidden shadow-2xl pointer-events-auto cursor-pointer hover:border-blue-500 transition-opacity duration-500 animate-bounce-in ${isIdle && !isUIOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-          >
-            <video ref={videoRef} autoPlay muted className="w-full h-full object-cover" />
-            <div className="absolute bottom-2 left-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded uppercase font-bold">Live</div>
-          </div>
-        )}
-
+        
         {/* Reaction Bar */}
         {room && (
             <div className={`flex justify-center mb-6 pointer-events-auto transition-transform duration-500 ${isIdle && !isUIOpen ? 'translate-y-[80px]' : 'translate-y-0'}`}>
@@ -530,15 +556,24 @@ export const Interface = () => {
                 active={audioEnabled} 
                 onClick={() => {
                     audioSynth.playUiClick();
-                    if (!screenShareEnabled) {
-                        startScreenShare().then(() => {
-                            const currentStore = useStore.getState();
-                            if (currentStore.screenShareEnabled && !currentStore.audioEnabled) {
-                                toggleAudio();
-                            }
-                        });
-                    } else {
+                    if (audioEnabled) {
+                        // If audio is on, we are sharing screen for audio. Stop it.
+                        stopScreenShare();
                         toggleAudio();
+                    } else {
+                        // If off, try to start screen share to get audio
+                         if (!screenShareEnabled) {
+                            startScreenShare().then(() => {
+                                // If successful, enable audio state
+                                const currentStore = useStore.getState();
+                                if (currentStore.screenShareEnabled) {
+                                     if (!currentStore.audioEnabled) toggleAudio();
+                                }
+                            });
+                        } else {
+                            // If screen share is already on, just toggle state
+                            toggleAudio();
+                        }
                     }
                 }} 
                 icon={SpeakerWaveIcon} 
@@ -557,7 +592,14 @@ export const Interface = () => {
                 <>
                 <ControlBtn 
                 active={screenShareEnabled} 
-                onClick={() => { audioSynth.playUiClick(); startScreenShare(); }} 
+                onClick={() => { 
+                    audioSynth.playUiClick(); 
+                    if (screenShareEnabled) {
+                        stopScreenShare();
+                    } else {
+                        startScreenShare(); 
+                    }
+                }} 
                 icon={ComputerDesktopIcon} 
                 offIcon={ScreenOff}
                 label={t('screen')}
