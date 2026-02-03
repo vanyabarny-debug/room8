@@ -339,7 +339,7 @@ export const Interface = () => {
                             onClick={() => { audioSynth.playUiClick(); setShowRoomInfo(!showRoomInfo); }}
                             className="text-left group transition hover:opacity-80"
                        >
-                            <h1 className="text-4xl font-black tracking-tighter leading-none drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
+                            <h1 className="text-4xl font-black tracking-tighter leading-none drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
                                 R<span className="text-[#3a83f6]">oo</span>m8
                             </h1>
                             <div className="text-xs font-medium text-gray-300 ml-0.5 group-hover:text-white transition">
@@ -672,14 +672,21 @@ export const Interface = () => {
         <div className="absolute inset-0 z-[250] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
             <button 
                 onClick={() => setCinemaMode(false)} 
-                className="absolute top-6 right-6 text-white hover:text-gray-300 p-2 bg-white/10 rounded-full btn-interactive"
+                className="absolute top-6 right-6 text-white hover:text-gray-300 p-2 bg-white/10 rounded-full btn-interactive z-50"
             >
                 <XMarkIcon className="w-8 h-8" />
             </button>
-            <div className="w-full max-w-7xl aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden border border-gray-800 animate-bounce-in">
-                <video ref={cinemaVideoRef} autoPlay className="w-full h-full object-contain" />
+            <div className="w-full max-w-7xl aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden border border-gray-800 animate-bounce-in relative">
+                {/* Enabled controls to allow native mobile player for zooming/fullscreen */}
+                <video 
+                    ref={cinemaVideoRef} 
+                    autoPlay 
+                    controls 
+                    className="w-full h-full object-contain" 
+                    style={{ maxHeight: '85vh' }}
+                />
             </div>
-            <div className="absolute bottom-10 text-white font-mono text-sm opacity-50 bg-black/50 px-4 py-1 rounded-full">Live Stream</div>
+            <div className="absolute bottom-10 text-white font-mono text-sm opacity-50 bg-black/50 px-4 py-1 rounded-full pointer-events-none">Live Stream</div>
         </div>
       )}
     </>
