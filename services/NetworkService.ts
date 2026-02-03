@@ -3,9 +3,10 @@ import { joinRoom } from 'trystero';
 import { useStore } from '../store';
 import { PlayerState } from '../types';
 
-// CRITICAL FIX: Changed APP_ID to a completely fresh namespace.
-// The previous ID might have had stale peer data on the public trackers.
-const APP_ID = 'room8_global_prod_v1'; 
+// CRITICAL FIX: Updated App ID + Added explicit Tracker URLs
+// Default trackers often fail, causing "users not seeing each other".
+// We now force a list of known working WebSocket trackers.
+const APP_ID = 'room8_v12_connect_fix'; 
 
 class NetworkService {
   private room: any = null;
@@ -31,7 +32,18 @@ class NetworkService {
 
     console.log(`[Network] Connecting to room: ${cleanId} (AppID: ${APP_ID})`);
     
-    this.room = joinRoom({ appId: APP_ID }, cleanId);
+    // Explicit configuration with robust trackers
+    const config = { 
+        appId: APP_ID,
+        trackerUrls: [
+            'wss://tracker.webtorrent.dev',
+            'wss://tracker.openwebtorrent.com',
+            'wss://tracker.files.fm:7073/announce',
+            'wss://tracker.btorrent.xyz'
+        ]
+    };
+
+    this.room = joinRoom(config, cleanId);
 
     // 1. Data Channels
     const [sendUpdate, getUpdate] = this.room.makeAction('playerUpdate');
@@ -56,7 +68,7 @@ class NetworkService {
             const { micStream, screenStream } = useStore.getState();
             if (micStream) this.room.addStream(micStream, peerId, { type: 'audio' });
             if (screenStream) this.room.addStream(screenStream, peerId, { type: 'screen' });
-        }, 1500); // Increased delay slightly for stability
+        }, 1500); 
     });
 
     this.room.onPeerLeave((peerId: string) => {
@@ -110,7 +122,8 @@ class NetworkService {
     
     // Multiple broadcasts to ensure arrival over UDP/WebRTC
     setTimeout(() => this.broadcastMyState(true), 500);
-    setTimeout(() => this.broadcastMyState(true), 2000);
+    setTimeout(() => this.broadcastMyState(true), 1500);
+    setTimeout(() => this.broadcastMyState(true), 3000);
 
     this.heartbeatInterval = setInterval(() => {
         this.broadcastMyState(true);
