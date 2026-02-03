@@ -25,7 +25,8 @@ const CinemaScreen = ({ stream, isLocal }: { stream?: MediaStream, isLocal: bool
       const vid = videoRef.current;
       vid.srcObject = stream;
       vid.crossOrigin = 'Anonymous';
-      vid.muted = isLocal; // Mute if local, play if remote
+      vid.muted = true; // Always mute the video element itself, we rely on Audio tracks or RemoteAudioController
+      vid.playsInline = true;
       vid.play().catch(e => console.log("Video play error", e));
       const texture = new THREE.VideoTexture(vid);
       setVideoTexture(texture);
@@ -35,7 +36,7 @@ const CinemaScreen = ({ stream, isLocal }: { stream?: MediaStream, isLocal: bool
         videoRef.current.srcObject = null;
       }
     };
-  }, [stream, isLocal]);
+  }, [stream]);
 
   if (!stream || !videoTexture) return null;
 
@@ -69,16 +70,15 @@ const CinemaScreen = ({ stream, isLocal }: { stream?: MediaStream, isLocal: bool
 const RemoteAudioController = ({ stream, position }: { stream: MediaStream | undefined, position: [number, number, number] }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const { camera } = useThree();
+    const [isPlaying, setIsPlaying] = useState(false);
 
     useEffect(() => {
         if (audioRef.current && stream) {
             audioRef.current.srcObject = stream;
-            const playPromise = audioRef.current.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => {
-                    console.warn("Audio autoplay blocked", e);
-                });
-            }
+            // Explicitly call play() to bypass some autoplay restrictions if user interacted
+            audioRef.current.play()
+                .then(() => setIsPlaying(true))
+                .catch(e => console.warn("Audio autoplay blocked, waiting for interaction", e));
         }
     }, [stream]);
 
@@ -97,7 +97,7 @@ const RemoteAudioController = ({ stream, position }: { stream: MediaStream | und
         }
     });
 
-    return <Html style={{ display: 'none' }}><audio ref={audioRef} playsInline /></Html>;
+    return <Html style={{ display: 'none' }}><audio ref={audioRef} playsInline autoPlay /></Html>;
 };
 
 // --- Reaction Particle Subcomponent using CSS Animation ---
@@ -187,7 +187,7 @@ const DynamicMicIcon = ({ stream, isMicOn }: { stream: MediaStream | null, isMic
 const Nametag = ({ name, isFriend, isMicOn, isSpeaking, stream }: { name: string, isFriend?: boolean, isMicOn: boolean, isSpeaking: boolean, stream: MediaStream | null }) => (
     <Html position={[0, 1.8, 0]} center zIndexRange={[50, 0]}>
         <div className="flex items-center gap-2 px-3 py-1.5 transform transition-all select-none whitespace-nowrap drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
-            <span className={`text-sm font-bold ${isFriend ? 'text-pink-400' : 'text-white'}`}>
+            <span className="text-sm font-bold text-white drop-shadow-md">
                 {name} {isFriend ? "❤️" : ""}
             </span>
             <div className="w-px h-3 bg-white/50" />
@@ -244,7 +244,7 @@ export const RemotePlayer: React.FC<{ id: string; data: any }> = ({ id, data }) 
         stream={finalAudioStream || null} 
       />
       
-      {/* 3D Audio Logic */}
+      {/* 3D Audio Logic - Renders an invisible Audio element */}
       {finalAudioStream && <RemoteAudioController stream={finalAudioStream} position={data.position} />}
 
       <ReactionEffect triggerEmoji={data.lastReaction} triggerTs={data.lastReactionTs} />
@@ -308,7 +308,7 @@ export const RemotePlayer: React.FC<{ id: string; data: any }> = ({ id, data }) 
 
 // --- Local Player ---
 export const LocalPlayer = () => {
-  const { localPlayer, isInGame, screenShareEnabled, screenStream, micEnabled, micStream, controls, activeRoomId, rooms } = useStore();
+  const { localPlayer, isInGame, screenShareEnabled, screenStream, micEnabled, micStream, controls, activeRoomId, rooms, setLocalPlayerMoving } = useStore();
   const room = activeRoomId ? rooms[activeRoomId] : null;
 
   const group = useRef<THREE.Group>(null);
@@ -348,7 +348,7 @@ export const LocalPlayer = () => {
     if (keys['KeyA'] || keys['ArrowLeft']) turn += 1;
     if (keys['KeyD'] || keys['ArrowRight']) turn -= 1;
     
-    // Joystick turn input (from left invisible stick horizontal or right input if added)
+    // Joystick turn input
     turn -= controls.turn;
 
     if (turn !== 0) {
@@ -359,7 +359,7 @@ export const LocalPlayer = () => {
     if (keys['KeyW'] || keys['ArrowUp']) move = -1; 
     if (keys['KeyS'] || keys['ArrowDown']) move = 1;  
     
-    // Joystick forward input (Up is negative z in threejs usually, but here logic is mapped)
+    // Joystick forward input
     if (controls.forward !== 0) move = -controls.forward;
 
     const direction = new THREE.Vector3(0, 0, move);
@@ -378,6 +378,11 @@ export const LocalPlayer = () => {
 
         group.current.position.copy(newPos);
         audioSynth.playFootstep();
+    }
+    
+    // Check if store needs update for UI idle state
+    if (useStore.getState().isLocalPlayerMoving !== (move !== 0)) {
+        setLocalPlayerMoving(move !== 0);
     }
     
     // BROADCAST UPDATE
