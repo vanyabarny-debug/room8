@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
@@ -255,8 +256,12 @@ export const RemotePlayer: React.FC<{ id: string; data: any }> = ({ id, data }) 
         stream={finalAudioStream || null} 
       />
       
-      {/* 3D Audio Logic - Always mounted to prevent audio cutting */}
-      {finalAudioStream && <RemoteAudioController key={finalAudioStream.id} stream={finalAudioStream} position={data.position} />}
+      {/* 1. Mic Audio Logic */}
+      {finalAudioStream && <RemoteAudioController key={`${id}-audio`} stream={finalAudioStream} position={data.position} />}
+
+      {/* 2. System Audio Logic (from Screen Share) */}
+      {/* If screen stream has audio tracks, play them spatially too */}
+      {screenStream && <RemoteAudioController key={`${id}-screen-audio`} stream={screenStream} position={data.position} />}
 
       <ReactionEffect triggerEmoji={data.lastReaction} triggerTs={data.lastReactionTs} />
 
@@ -394,7 +399,8 @@ export const LocalPlayer = () => {
     // --- CAMERA LOGIC: "Iron-Locked" Camera when using Joystick ---
     if (isJoystickActive && group.current) {
         // Calculate position slightly behind and above player, respecting player rotation
-        const offset = new THREE.Vector3(0, 4, 8); 
+        // UPDATED: Lower height (2.5) and closer distance (6) for a parallel-ish view
+        const offset = new THREE.Vector3(0, 2.5, 6); 
         offset.applyEuler(group.current.rotation);
         
         const targetCamPos = group.current.position.clone().add(offset);
@@ -402,8 +408,8 @@ export const LocalPlayer = () => {
         // Smoothly interpolate camera position
         state.camera.position.lerp(targetCamPos, 0.2);
         
-        // Always look at the player center
-        state.camera.lookAt(group.current.position.x, group.current.position.y + 1, group.current.position.z);
+        // Always look at the player center (roughly head height)
+        state.camera.lookAt(group.current.position.x, group.current.position.y + 1.6, group.current.position.z);
     } 
     // If not using joystick, OrbitControls in GameCanvas handles it (via standard mode) or standard keyboard movement doesn't lock camera
     else if (group.current && (state.controls as any) && !isJoystickActive) {
