@@ -8,72 +8,71 @@ import { AudioVisualizer } from './AudioVisualizer';
 import { DEFAULT_REACTIONS, TRANSLATIONS } from '../../constants';
 import { audioSynth } from '../../services/AudioSynthesizer';
 
-// --- Visual Joystick for Mobile ---
+// --- Roblox-style Fixed Joystick ---
 const Joystick = ({ setControls }: { setControls: (c: { forward: number, turn: number }) => void }) => {
-    const containerRef = useRef<HTMLDivElement>(null);
     const stickRef = useRef<HTMLDivElement>(null);
-    const [isActive, setIsActive] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+
+    // Configuration
+    const maxDistance = 50; // Max radius of the stick movement
     
     const handleStart = (e: React.TouchEvent) => {
-        setIsActive(true);
+        setIsDragging(true);
         handleMove(e);
     };
 
     const handleMove = (e: React.TouchEvent) => {
-        if (!containerRef.current || !stickRef.current) return;
+        // We use a fixed center point relative to the container for the "Roblox" feel
+        // The container is 128x128 (w-32), so center is 64,64
         const touch = e.touches[0];
-        const rect = containerRef.current.getBoundingClientRect();
+        const target = e.currentTarget.getBoundingClientRect();
         
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        const dx = x - centerX;
-        const dy = y - centerY;
-        
-        const distance = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
-        const angle = Math.atan2(dy, dx);
-        
-        const stickX = distance * Math.cos(angle);
-        const stickY = distance * Math.sin(angle);
-        
-        stickRef.current.style.transform = `translate(${stickX}px, ${stickY}px)`;
-        
-        // Normalize outputs (-1 to 1)
-        // Up should be positive for logic, but screen Y is down positive.
-        // Forward: -y (screen up)
-        // Turn: -x (screen left)
-        const forward = -(dy / 40); 
-        const turn = -(dx / 40);
-        
-        // Deadzone
-        const fVal = Math.abs(forward) < 0.2 ? 0 : forward;
-        const tVal = Math.abs(turn) < 0.2 ? 0 : turn;
+        const centerX = target.left + target.width / 2;
+        const centerY = target.top + target.height / 2;
 
-        setControls({ forward: fVal, turn: tVal });
+        const deltaX = touch.clientX - centerX;
+        const deltaY = touch.clientY - centerY;
+
+        const distance = Math.min(Math.sqrt(deltaX * deltaX + deltaY * deltaY), maxDistance);
+        const angle = Math.atan2(deltaY, deltaX);
+
+        const x = distance * Math.cos(angle);
+        const y = distance * Math.sin(angle);
+
+        setPosition({ x, y });
+
+        // Normalize output -1 to 1
+        // Forward is Negative Y (up on screen)
+        // Turn is Negative X (left) / Positive X (right)
+        const forward = -(y / maxDistance);
+        const turn = -(x / maxDistance);
+
+        setControls({ forward, turn });
     };
 
     const handleEnd = () => {
-        setIsActive(false);
-        if (stickRef.current) {
-            stickRef.current.style.transform = `translate(0px, 0px)`;
-        }
+        setIsDragging(false);
+        setPosition({ x: 0, y: 0 });
         setControls({ forward: 0, turn: 0 });
     };
 
     return (
         <div 
-            className="absolute bottom-6 left-6 w-32 h-32 z-50 pointer-events-auto touch-none select-none flex items-center justify-center"
+            className="absolute bottom-10 left-10 w-40 h-40 z-50 touch-none select-none flex items-center justify-center"
             onTouchStart={handleStart}
             onTouchMove={handleMove}
             onTouchEnd={handleEnd}
         >
-            <div ref={containerRef} className="w-24 h-24 bg-white/10 border-2 border-white/20 rounded-full backdrop-blur-sm relative flex items-center justify-center">
+            {/* Base Circle */}
+            <div className="w-32 h-32 rounded-full bg-black/40 border-2 border-white/10 backdrop-blur-sm relative flex items-center justify-center">
+                {/* Thumb Stick */}
                 <div 
-                    ref={stickRef} 
-                    className={`w-10 h-10 rounded-full shadow-lg transition-transform duration-75 ${isActive ? 'bg-blue-500' : 'bg-white/50'}`}
+                    ref={stickRef}
+                    className={`w-14 h-14 rounded-full shadow-lg transition-transform duration-75 ${isDragging ? 'bg-white/80' : 'bg-white/50'}`}
+                    style={{ 
+                        transform: `translate(${position.x}px, ${position.y}px)` 
+                    }}
                 />
             </div>
         </div>
