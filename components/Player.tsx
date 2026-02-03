@@ -75,10 +75,18 @@ const RemoteAudioController = ({ stream, position }: { stream: MediaStream | und
     useEffect(() => {
         if (audioRef.current && stream) {
             audioRef.current.srcObject = stream;
+            audioRef.current.volume = 1; // Start max
+            
             // Explicitly call play() to bypass some autoplay restrictions if user interacted
-            audioRef.current.play()
-                .then(() => setIsPlaying(true))
-                .catch(e => console.warn("Audio autoplay blocked, waiting for interaction", e));
+            const tryPlay = async () => {
+                try {
+                    await audioRef.current?.play();
+                    setIsPlaying(true);
+                } catch(e) {
+                    console.warn("Audio autoplay blocked, retrying on interaction", e);
+                }
+            };
+            tryPlay();
         }
     }, [stream]);
 
@@ -245,7 +253,8 @@ export const RemotePlayer: React.FC<{ id: string; data: any }> = ({ id, data }) 
       />
       
       {/* 3D Audio Logic - Renders an invisible Audio element */}
-      {finalAudioStream && <RemoteAudioController stream={finalAudioStream} position={data.position} />}
+      {/* FORCE KEY UPDATE to ensure remount if stream changes */}
+      {finalAudioStream && <RemoteAudioController key={finalAudioStream.id} stream={finalAudioStream} position={data.position} />}
 
       <ReactionEffect triggerEmoji={data.lastReaction} triggerTs={data.lastReactionTs} />
 
