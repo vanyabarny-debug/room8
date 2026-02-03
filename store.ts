@@ -116,6 +116,8 @@ interface AppState {
     turn: number;
   };
   
+  isLocalPlayerMoving: boolean;
+
   // Media State
   micEnabled: boolean;
   audioEnabled: boolean;
@@ -158,6 +160,8 @@ interface AppState {
   removeFriend: (id: string) => void;
   
   setControls: (controls: Partial<{ forward: number; turn: number }>) => void;
+  setLocalPlayerMoving: (val: boolean) => void;
+
   requestTeleport: (targetId: string) => void;
   respondToTeleport: (accepted: boolean) => void;
   setIncomingTeleport: (req: TeleportRequest | null) => void;
@@ -193,6 +197,7 @@ export const useStore = create<AppState>((set, get) => ({
   incomingFriendRequest: null,
   
   controls: { forward: 0, turn: 0 },
+  isLocalPlayerMoving: false,
 
   micEnabled: false,
   audioEnabled: false,
@@ -410,6 +415,8 @@ export const useStore = create<AppState>((set, get) => ({
   setControls: (controls) => set((state) => ({
       controls: { ...state.controls, ...controls }
   })),
+
+  setLocalPlayerMoving: (val) => set({ isLocalPlayerMoving: val }),
 
   requestTeleport: (targetId) => {
       networkService.sendTeleportRequest(targetId, get().localPlayer.name);
