@@ -48,10 +48,12 @@ class NetworkService {
         this.broadcastMyState(true);
         
         // Retrigger streams after a slight delay to ensure P2P handshake is done
+        // IMPORTANT FIX: We explicitly add the stream to the specific peer to force negotiation
         setTimeout(() => {
+            if(!this.room) return;
             const { micStream, screenStream } = useStore.getState();
-            if (micStream) this.addStream(micStream, 'audio');
-            if (screenStream) this.addStream(screenStream, 'screen');
+            if (micStream) this.room.addStream(micStream, peerId, { type: 'audio' });
+            if (screenStream) this.room.addStream(screenStream, peerId, { type: 'screen' });
         }, 1000);
     });
 
@@ -170,7 +172,7 @@ class NetworkService {
       if(this.room) {
           // Add stream with a small delay to ensure room mesh is ready
           setTimeout(() => {
-             if(this.room) this.room.addStream(stream, { type });
+             if(this.room) this.room.addStream(stream, null, { type });
           }, 500);
       }
   }
