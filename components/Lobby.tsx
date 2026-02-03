@@ -377,8 +377,8 @@ export const Lobby = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row items-center justify-between p-6 z-20 relative gap-4">
         <div className="flex flex-col items-center md:items-start">
-            {/* UPDATED LOGO FONT STYLE */}
-            <h1 className="text-4xl md:text-5xl font-black tracking-tighter drop-shadow-lg">
+            {/* UPDATED LOGO FONT STYLE TO MATCH INTERFACE.TSX */}
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter leading-none drop-shadow-lg">
                 R<span className="text-[#3a83f6]">oo</span>m8
             </h1>
         </div>
