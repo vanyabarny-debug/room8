@@ -3,8 +3,8 @@ import { joinRoom } from 'trystero';
 import { useStore } from '../store';
 import { PlayerState } from '../types';
 
-// Updated App ID to ensure fresh connections for everyone
-const APP_ID = 'room8_v4_stable_connect'; 
+// Updated App ID to ensure fresh connections
+const APP_ID = 'room8_v6_p2p_fix'; 
 
 class NetworkService {
   private room: any = null;
@@ -18,12 +18,19 @@ class NetworkService {
   private updateInterval = 50; // ms
   private heartbeatInterval: any = null;
 
+  // Cache last known position to send on heartbeat even if not moving
+  private lastPosition: [number, number, number] | null = null;
+  private lastRotation: [number, number, number] | null = null;
+
   connect(roomId: string) {
     if (this.room) this.disconnect();
 
     console.log(`[Network] Connecting to room: ${roomId}`);
-    // Using a specific namespace to avoid collisions
-    this.room = joinRoom({ appId: APP_ID, password: roomId }, 'room8_main');
+    
+    // FIX: Use roomId as the Trystero room ID (namespace) directly.
+    // Removed password to ensure maximum compatibility and visibility.
+    // Privacy is handled by the randomness of the roomId itself for private rooms.
+    this.room = joinRoom({ appId: APP_ID }, roomId);
 
     // 1. Data Channels
     const [sendUpdate, getUpdate] = this.room.makeAction('playerUpdate');
@@ -39,7 +46,7 @@ class NetworkService {
     // 2. Event Listeners
     this.room.onPeerJoin((peerId: string) => {
         console.log(`[Network] Peer joined: ${peerId}`);
-        // Immediately send my state to the new peer
+        // Immediately send my full state to the new peer
         this.broadcastMyState(true);
     });
 
@@ -58,6 +65,7 @@ class NetworkService {
 
     // 3. Handle Incoming Data
     getUpdate((data: Partial<PlayerState>, peerId: string) => {
+        // If we receive data, we update the peer
         useStore.getState().updatePeer(peerId, { ...data, id: peerId });
     });
 
@@ -83,35 +91,48 @@ class NetworkService {
         if (data.type === 'request') {
             useStore.getState().setIncomingFriendRequest({ fromId: peerId, fromName: data.name });
         } else if (data.type === 'response' && data.accepted) {
-            // They accepted my request, add them
             useStore.getState().addFriend(peerId);
         }
     });
 
     // 4. Heartbeat & Initial Broadcast
-    // Broadcast immediately to announce presence to existing peers
-    setTimeout(() => this.broadcastMyState(true), 500);
-    setTimeout(() => this.broadcastMyState(true), 1500);
+    // Send immediately
+    this.broadcastMyState(true);
+    
+    // And a bit later to ensure connection stabilization
+    setTimeout(() => this.broadcastMyState(true), 1000);
 
     this.heartbeatInterval = setInterval(() => {
         this.broadcastMyState(true);
     }, 2000);
   }
 
+  // Sends the full state, utilizing cached position if available
   broadcastMyState(force = false) {
     if (!this.room || !this.sendAction) return;
     const { localPlayer, micEnabled, screenShareEnabled } = useStore.getState();
     
-    // Always send full state on heartbeat/join
-    this.sendAction({
+    const payload = {
         ...localPlayer,
         isMicOn: micEnabled,
-        isScreenSharing: screenShareEnabled
-    });
+        isScreenSharing: screenShareEnabled,
+        // Include cached position if we have it (from previous movement updates)
+        // This ensures standing still doesn't make us invisible/reset
+        ...(this.lastPosition ? { position: this.lastPosition } : {}),
+        ...(this.lastRotation ? { rotation: this.lastRotation } : {})
+    };
+
+    this.sendAction(payload);
   }
 
+  // Called frequently by the game loop
   sendMyUpdate(data: any) {
     if (!this.room || !this.sendAction) return;
+    
+    // Cache position for heartbeats
+    if (data.position) this.lastPosition = data.position;
+    if (data.rotation) this.lastRotation = data.rotation;
+
     const now = Date.now();
     if (now - this.lastUpdate < this.updateInterval) return;
 
@@ -141,7 +162,6 @@ class NetworkService {
 
   addStream(stream: MediaStream, type: 'audio' | 'screen') {
       if(this.room) {
-          // Explicitly pass metadata object
           this.room.addStream(stream, { type });
       }
   }
@@ -161,6 +181,9 @@ class NetworkService {
       this.room.leave();
       this.room = null;
     }
+    // Clear caches
+    this.lastPosition = null;
+    this.lastRotation = null;
   }
 }
 
