@@ -1,0 +1,8 @@
+{
+  "name": "Room8",
+  "description": "A 3D WebGL meeting space.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
