@@ -3,10 +3,10 @@ import { joinRoom } from 'trystero';
 import { useStore } from '../store';
 import { PlayerState } from '../types';
 
-// CRITICAL FIX: Updated App ID + Added explicit Tracker URLs
-// Default trackers often fail, causing "users not seeing each other".
-// We now force a list of known working WebSocket trackers.
-const APP_ID = 'room8_v12_connect_fix'; 
+// CRITICAL FIX: Updated App ID + Added RTC Config with STUN
+// STUN servers are required for peers to connect across different networks (NAT traversal).
+// Without STUN, WebRTC often fails to establish a connection.
+const APP_ID = 'room8_v14_lowlat'; 
 
 class NetworkService {
   private room: any = null;
@@ -17,7 +17,7 @@ class NetworkService {
   
   // Throttle updates
   private lastUpdate = 0;
-  private updateInterval = 50; // ms
+  private updateInterval = 30; // Lowered to 30ms for smoother, real-time sync
   private heartbeatInterval: any = null;
 
   // Cache last known position to send on heartbeat even if not moving
@@ -32,7 +32,7 @@ class NetworkService {
 
     console.log(`[Network] Connecting to room: ${cleanId} (AppID: ${APP_ID})`);
     
-    // Explicit configuration with robust trackers
+    // Explicit configuration with robust trackers AND STUN servers
     const config = { 
         appId: APP_ID,
         trackerUrls: [
@@ -40,7 +40,13 @@ class NetworkService {
             'wss://tracker.openwebtorrent.com',
             'wss://tracker.files.fm:7073/announce',
             'wss://tracker.btorrent.xyz'
-        ]
+        ],
+        rtcConfig: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:global.stun.twilio.com:3478' }
+            ]
+        }
     };
 
     this.room = joinRoom(config, cleanId);
