@@ -339,7 +339,7 @@ export const Interface = () => {
                             onClick={() => { audioSynth.playUiClick(); setShowRoomInfo(!showRoomInfo); }}
                             className="text-left group transition hover:opacity-80"
                        >
-                            <h1 className="text-4xl font-black tracking-tighter leading-none shadow-black drop-shadow-md">
+                            <h1 className="text-4xl font-black tracking-tighter leading-none drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
                                 R<span className="text-[#3a83f6]">oo</span>m8
                             </h1>
                             <div className="text-xs font-medium text-gray-300 ml-0.5 group-hover:text-white transition">
@@ -349,19 +349,19 @@ export const Interface = () => {
                   </div>
 
                 {/* MODAL in Interface.tsx is strictly for viewing Room Info while IN-GAME */}
-                {/* Updated: Wider, Grid Layout */}
+                {/* Updated: Wider, Grid Layout, Mobile Responsive Margins */}
                 {showRoomInfo && (
                     <div 
-                        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm md:absolute md:inset-auto md:top-20 md:left-4 md:bg-transparent md:backdrop-blur-none"
+                        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm md:absolute md:inset-auto md:top-20 md:left-4 md:bg-transparent md:backdrop-blur-none p-4 md:p-0"
                         onClick={() => setShowRoomInfo(false)}
                     >
                         <div 
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full max-w-2xl bg-black/95 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl animate-fade-in text-left relative"
+                            className="w-full max-w-2xl bg-black/95 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl animate-fade-in text-left relative max-h-[85vh] md:max-h-auto overflow-y-auto"
                         >
                             {/* Header Gradient */}
                             <div 
-                                className="h-24 w-full relative"
+                                className="h-24 w-full relative flex-shrink-0"
                                 style={{ background: room.headerGradient || (room.type === 'day' ? 'linear-gradient(to right, #14532d, #1e3a8a)' : room.type === 'night' ? 'linear-gradient(to right, #000000, #312e81)' : 'linear-gradient(to right, #312e81, #1e40af)') }} 
                             >
                                 <button onClick={() => setShowRoomInfo(false)} className="absolute top-2 right-2 bg-black/20 backdrop-blur p-1 rounded-full hover:bg-white hover:text-black transition z-10 text-white">
