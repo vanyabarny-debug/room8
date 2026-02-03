@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Room9 - P2P Metaverse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              display: ['Orbitron', 'sans-serif'],
+            },
+            colors: {
+              neon: {
+                blue: '#00f3ff',
+                pink: '#ff00ff',
+                purple: '#bc13fe',
+                green: '#0aff0a',
+              },
+              dark: {
+                950: '#050505',
+                900: '#0a0a0a',
+                800: '#121212',
+              }
+            },
+            backgroundImage: {
+              'grid-pattern': "linear-gradient(to right, #1f2937 1px, transparent 1px), linear-gradient(to bottom, #1f2937 1px, transparent 1px)",
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body { margin: 0; padding: 0; overflow: hidden; background-color: #050505; touch-action: none; user-select: none; color: white; }
+      
+      /* Glassmorphism Utilities */
+      .glass {
+        background: rgba(18, 18, 18, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .glass-light {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+      ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+
+      /* Animations */
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+      .animate-float { animation: float 6s ease-in-out infinite; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "zustand": "https://esm.sh/zustand@^5.0.11",
+    "@react-three/fiber": "https://esm.sh/@react-three/fiber@^9.5.0",
+    "three": "https://esm.sh/three@^0.182.0",
+    "@react-three/drei": "https://esm.sh/@react-three/drei@^10.7.7",
+    "trystero/": "https://esm.sh/trystero@^0.22.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
