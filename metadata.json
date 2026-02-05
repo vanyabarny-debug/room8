@@ -1,8 +1,0 @@
-{
-  "name": "Room9 Metaverse",
-  "description": "Serverless P2P Browser Metaverse with Spatial Audio and Face Tracking",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ]
-}
