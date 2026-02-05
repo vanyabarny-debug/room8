@@ -1,0 +1,163 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Room8</title>
+    <link rel="icon" type="image/png" href="icon.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Import Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { 
+        margin: 0; 
+        overflow: hidden; 
+        background: #000; 
+        color: white; 
+        user-select: none; 
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        font-family: 'Inter', sans-serif; 
+      }
+      #root { width: 100vw; height: 100vh; }
+      
+      /* Solid Black Background (Removed Gradient) */
+      .liquid-bg {
+        background: #000000;
+      }
+
+      /* Custom Scrollbar */
+      .custom-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: transparent transparent;
+        transition: scrollbar-color 0.3s;
+      }
+      
+      .custom-scroll:hover {
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+      }
+
+      .custom-scroll::-webkit-scrollbar {
+        width: 4px;
+      }
+      
+      .custom-scroll::-webkit-scrollbar-track {
+        background-color: transparent;
+      }
+      
+      .custom-scroll::-webkit-scrollbar-thumb {
+        background-color: transparent;
+        border-radius: 10px;
+        transition: background-color 0.3s;
+      }
+      
+      .custom-scroll:hover::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .minimal-input {
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid #3a83f6;
+        color: white;
+        font-size: 1.5rem;
+        text-align: center;
+        outline: none;
+        padding-bottom: 0.5rem;
+        width: 100%;
+        border-radius: 0;
+        transition: border-color 0.3s ease;
+      }
+      .minimal-input:focus {
+        border-bottom-color: #60a5fa;
+      }
+      .minimal-input::placeholder {
+        color: #555;
+        font-size: 1.5rem;
+      }
+
+      /* Animations */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      
+      @keyframes bounceIn {
+        0% { transform: scale(0.95); opacity: 0; }
+        60% { transform: scale(1.02); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .animate-bounce-in {
+        animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+
+      @keyframes floatUp {
+        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+        20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+        100% { transform: translate(-50%, -150px) scale(1); opacity: 0; }
+      }
+      .animate-float-up {
+        animation: floatUp 2s ease-out forwards;
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+
+      /* Custom Bounce Rare: Jumps every 4 seconds */
+      @keyframes bounceRare {
+        0%, 85%, 100% { transform: translateY(0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+        90% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+        95% { transform: translateY(0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+        97% { transform: translateY(-10%); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+      }
+      .animate-bounce-rare {
+        animation: bounceRare 4s infinite;
+      }
+
+      .btn-interactive {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+      }
+      .btn-interactive:active {
+        transform: scale(0.96);
+      }
+      
+      /* Toggle Switch */
+      .toggle-checkbox:checked {
+        right: 0;
+        border-color: #3a83f6;
+      }
+      .toggle-checkbox:checked + .toggle-label {
+        background-color: #3a83f6;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "@react-three/fiber": "https://esm.sh/@react-three/fiber@^9.5.0",
+    "three": "https://esm.sh/three@^0.182.0",
+    "@heroicons/react/": "https://esm.sh/@heroicons/react@^2.2.0/",
+    "@react-three/drei": "https://esm.sh/@react-three/drei@^10.7.7",
+    "zustand": "https://esm.sh/zustand@^5.0.11",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "trystero": "https://esm.sh/trystero@0.19.0/torrent",
+    "socket.io-client": "https://esm.sh/socket.io-client@4.7.2",
+    "livekit-client": "https://esm.sh/livekit-client@1.15.4"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
