@@ -1,11 +1,11 @@
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Html, Sparkles, ContactShadows, BakeShadows } from '@react-three/drei';
+import { Html, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { useStore } from '../../store';
 import { audioSynth } from '../../services/AudioSynthesizer';
-import { XMarkIcon, PlayIcon, PauseIcon, SpeakerWaveIcon } from '@heroicons/react/24/solid';
+import { XMarkIcon, PlayIcon, PauseIcon, SpeakerWaveIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 
 // --- CONSTANTS ---
 const HALL_WIDTH = 40;
@@ -42,10 +42,13 @@ export const isConferenceObstacle = (x: number, z: number) => {
     // Tribune
     if (z > 57.5 && z < 59.5 && Math.abs(x) < 2.5) return true;
 
+    // Music Player Collision
+    if (z > 58.5 && z < 61.5 && x > 14.5 && x < 17.5) return true;
+
     // Screen
     if (z > 63.5 && z < 65 && Math.abs(x) < 13) return true;
 
-    // Chairs
+    // Chairs - Reduced collision radius for better sliding
     if (z > 4 && z < 46 && Math.abs(x) < 16) {
         const row = Math.round((z - 5) / 3);
         const col = Math.round(x / 2.5);
@@ -54,7 +57,8 @@ export const isConferenceObstacle = (x: number, z: number) => {
         if (Math.abs(chairX) > 2.5) {
             const dx = x - chairX;
             const dz = z - chairZ;
-            if (dx*dx + dz*dz < 0.36) return true; // Reduced radius slightly
+            // Radius reduced to ~0.45 (0.45^2 = 0.2025)
+            if (dx*dx + dz*dz < 0.2) return true; 
         }
     }
     return false;
@@ -74,34 +78,37 @@ export const getConferenceSeat = (px: number, pz: number) => {
     return null;
 };
 
-// Simplified Chair for Performance (No shadow casting, relies on ContactShadows)
+// Chair with Shadows Enabled
 const Chair: React.FC<{ position: [number, number, number] }> = ({ position }) => {
     return (
         <group position={position} rotation={[0, Math.PI, 0]}>
-            <mesh position={[0, 0.45, 0]}>
+            {/* Seat */}
+            <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
                 <boxGeometry args={[1.2, 0.15, 1.0]} />
-                <meshStandardMaterial color="#7f1d1d" roughness={0.8} />
+                <meshStandardMaterial color="#7f1d1d" roughness={0.5} />
             </mesh>
+            {/* Backrest */}
             <group position={[0, 0.95, 0.45]} rotation={[-0.15, 0, 0]}>
-                <mesh>
+                <mesh castShadow receiveShadow>
                     <boxGeometry args={[1.2, 1.0, 0.1]} />
-                    <meshStandardMaterial color="#7f1d1d" roughness={0.8} />
+                    <meshStandardMaterial color="#7f1d1d" roughness={0.5} />
                 </mesh>
             </group>
-            <mesh position={[-0.65, 0.7, 0]}>
+            {/* Armrests */}
+            <mesh position={[-0.65, 0.7, 0]} castShadow>
                 <boxGeometry args={[0.1, 0.05, 0.8]} />
                 <meshStandardMaterial color="#222" />
             </mesh>
-            <mesh position={[0.65, 0.7, 0]}>
+            <mesh position={[0.65, 0.7, 0]} castShadow>
                 <boxGeometry args={[0.1, 0.05, 0.8]} />
                 <meshStandardMaterial color="#222" />
             </mesh>
-            {/* Legs simplified */}
-            <mesh position={[-0.55, 0.2, 0]}>
+            {/* Legs - Only draw main support to save draw calls visually if wanted, but boxes are cheap */}
+            <mesh position={[-0.55, 0.2, 0]} castShadow>
                 <boxGeometry args={[0.05, 0.4, 0.8]} />
                 <meshStandardMaterial color="#333" />
             </mesh>
-            <mesh position={[0.55, 0.2, 0]}>
+            <mesh position={[0.55, 0.2, 0]} castShadow>
                 <boxGeometry args={[0.05, 0.4, 0.8]} />
                 <meshStandardMaterial color="#333" />
             </mesh>
@@ -595,23 +602,47 @@ const Tribune = () => {
         };
     }, [conferenceState.lightColor]);
 
+    const teleportToPodium = (e: any) => {
+        e.stopPropagation();
+        const teleportEvent = new CustomEvent('teleport-to', { detail: [0, 1.5, 59] });
+        window.dispatchEvent(teleportEvent);
+        
+        // Also trigger look at audience (handled by setting rotation in teleport handler if needed, 
+        // or we can manually set it here via store ref if we exposed it, but standard teleport
+        // just moves position. User can turn.)
+        // Actually, let's force rotation via a small hack or just let user turn.
+        // For now, position is key.
+    };
+
     return (
         <group position={[0, 0, 58]}>
             <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
                 <boxGeometry args={[4, 3, 2]} />
                 <meshStandardMaterial color="#111" roughness={0.2} />
             </mesh>
+            
+            {/* Stand Here Button */}
+            <group position={[0, 3.02, 0.5]} onClick={teleportToPodium} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+                <mesh>
+                    <cylinderGeometry args={[0.3, 0.3, 0.05, 32]} />
+                    <meshStandardMaterial color="#00ff00" emissive="#00ff00" emissiveIntensity={2} />
+                </mesh>
+                <Html position={[0, 0.2, 0]} center transform pointerEvents="none">
+                    <div className="text-[8px] font-bold text-black bg-green-400 px-1 rounded whitespace-nowrap">STAND</div>
+                </Html>
+            </group>
+
             <mesh position={[0, 3.2, 0.5]} rotation={[0.5, 0, 0]} castShadow>
                 <cylinderGeometry args={[0.02, 0.02, 1]} />
                 <meshStandardMaterial color="#888" />
             </mesh>
             <mesh position={[0, 3.01, 0]}>
                 <boxGeometry args={[0.5, 0.1, 0.5]} />
-                <meshStandardMaterial color={isSpeaker ? "#ff0000" : "#333"} emissive={isSpeaker ? "#ff0000" : "#000"} emissiveIntensity={2} />
+                <meshStandardMaterial color={isSpeaker ? "#ff0000" : "#333"} emissive={isSpeaker ? "#ff0000" : "#000"} emissiveIntensity={5} />
             </mesh>
             <mesh position={[1, 3.01, 0]}>
                 <boxGeometry args={[0.5, 0.1, 0.5]} />
-                <meshStandardMaterial color={conferenceState.lightColor} emissive={conferenceState.lightColor} emissiveIntensity={2} />
+                <meshStandardMaterial color={conferenceState.lightColor} emissive={conferenceState.lightColor} emissiveIntensity={5} />
             </mesh>
 
             {showHint && (
@@ -654,11 +685,11 @@ export const ConferenceScene = () => {
             const z = i * 15;
             return (
                 <group key={z}>
-                    {/* Main Light - Reduced count for performance */}
-                    <pointLight position={[0, 14, z]} intensity={1.5} distance={40} color={conferenceState.lightColor} />
+                    {/* Main Light */}
+                    <pointLight position={[0, 14, z]} intensity={0.5} distance={40} color={conferenceState.lightColor} />
                     {/* Fake Fill Lights */}
-                    <pointLight position={[-12, 14, z]} intensity={0.5} distance={20} color={conferenceState.lightColor} />
-                    <pointLight position={[12, 14, z]} intensity={0.5} distance={20} color={conferenceState.lightColor} />
+                    <pointLight position={[-12, 14, z]} intensity={0.2} distance={20} color={conferenceState.lightColor} />
+                    <pointLight position={[12, 14, z]} intensity={0.2} distance={20} color={conferenceState.lightColor} />
                 </group>
             );
         });
@@ -666,9 +697,6 @@ export const ConferenceScene = () => {
 
     return (
         <group>
-            {/* OPTIMIZATION: BAKE SHADOWS - Calculates shadows once then stops */}
-            <BakeShadows />
-
             {/* CORRIDOR */}
             <group position={[0, HALL_HEIGHT/2, -17.5]}>
                 <mesh position={[0, -HALL_HEIGHT/2, 0]} receiveShadow>
@@ -745,38 +773,28 @@ export const ConferenceScene = () => {
                 </mesh>
             </group>
 
-            {/* LIGHTING - Optimized */}
+            {/* LIGHTING */}
             <ambientLight intensity={0.15} color="#ffffff" />
-            <pointLight position={[0, 7, -30]} intensity={0.3} distance={15} color="#fff" />
-            <pointLight position={[0, 7, -10]} intensity={0.3} distance={15} color="#fff" />
+            <pointLight position={[0, 7, -30]} intensity={0.2} distance={15} color="#fff" />
+            <pointLight position={[0, 7, -10]} intensity={0.2} distance={15} color="#fff" />
             {ceilingLights}
 
-            {/* Simulated Glow */}
-            <rectAreaLight position={[-19.8, HALL_HEIGHT/2, 35]} width={70} height={16} color={conferenceState.lightColor} intensity={15} rotation={[0, -Math.PI/2, 0]} />
-            <rectAreaLight position={[19.8, HALL_HEIGHT/2, 35]} width={70} height={16} color={conferenceState.lightColor} intensity={15} rotation={[0, Math.PI/2, 0]} />
+            {/* Simulated Glow - Intensified via Power */}
+            <rectAreaLight position={[-19.8, HALL_HEIGHT/2, 35]} width={70} height={16} color={conferenceState.lightColor} intensity={30} rotation={[0, -Math.PI/2, 0]} />
+            <rectAreaLight position={[19.8, HALL_HEIGHT/2, 35]} width={70} height={16} color={conferenceState.lightColor} intensity={30} rotation={[0, Math.PI/2, 0]} />
             
-            {/* The ONLY Light that casts dynamic shadows for performance */}
-            <spotLight 
-                position={[0, 15, 40]} 
-                target-position={[0, 0, 60]} 
-                intensity={3} 
-                angle={0.6} 
-                penumbra={0.5} 
+            {/* SHADOW CASTING LIGHT - Directional for cleaner shadows across hall */}
+            <directionalLight 
+                position={[20, 30, 10]} 
+                target-position={[0, 0, 40]}
+                intensity={1.0} 
                 castShadow 
-                shadow-mapSize={[1024, 1024]}
-            />
-
-            {/* CONTACT SHADOWS - The "Baked" Look */}
-            {/* Creates soft shadows under all furniture without real-time cost */}
-            <ContactShadows 
-                position={[0, 0.1, 35]} 
-                opacity={0.6} 
-                scale={60} 
-                blur={2} 
-                far={2} 
-                resolution={512} 
-                color="#000000" 
-                frames={1} // Bake once
+                shadow-mapSize={[2048, 2048]}
+                shadow-bias={-0.0005}
+                shadow-camera-left={-40}
+                shadow-camera-right={40}
+                shadow-camera-top={40}
+                shadow-camera-bottom={-40}
             />
 
             {/* PROPS */}

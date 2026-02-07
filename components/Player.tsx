@@ -639,6 +639,11 @@ export const LocalPlayer = () => {
             
             // Limit Z far to 69 (Stage End)
             if (desiredPos.z > 69) desiredPos.z = 69;
+
+            // Screen Collision Check (Camera shouldn't go through screen at Z=64)
+            if (desiredPos.z > 63.5 && Math.abs(desiredPos.x) < 13) {
+                desiredPos.z = 63.5;
+            }
         }
     }
 
