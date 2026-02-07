@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html, Sparkles } from '@react-three/drei';
@@ -780,8 +779,8 @@ export const ConferenceScene = () => {
             {ceilingLights}
 
             {/* Simulated Glow - Intensified via Power */}
-            <rectAreaLight position={[-19.8, HALL_HEIGHT/2, 35]} width={70} height={16} color={conferenceState.lightColor} intensity={30} rotation={[0, -Math.PI/2, 0]} />
-            <rectAreaLight position={[19.8, HALL_HEIGHT/2, 35]} width={70} height={16} color={conferenceState.lightColor} intensity={30} rotation={[0, Math.PI/2, 0]} />
+            <rectAreaLight position={[-19.8, HALL_HEIGHT/2, 35]} width={70} height={16} color={conferenceState.lightColor} intensity={50} rotation={[0, -Math.PI/2, 0]} />
+            <rectAreaLight position={[19.8, HALL_HEIGHT/2, 35]} width={70} height={16} color={conferenceState.lightColor} intensity={50} rotation={[0, Math.PI/2, 0]} />
             
             {/* SHADOW CASTING LIGHT - Directional for cleaner shadows across hall */}
             <directionalLight 
@@ -789,7 +788,7 @@ export const ConferenceScene = () => {
                 target-position={[0, 0, 40]}
                 intensity={1.0} 
                 castShadow 
-                shadow-mapSize={[2048, 2048]}
+                shadow-mapSize={[4096, 4096]}
                 shadow-bias={-0.0005}
                 shadow-camera-left={-40}
                 shadow-camera-right={40}
