@@ -1,7 +1,13 @@
+
 {
   "name": "room8",
   "version": "1.0.0",
   "main": "index.tsx",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -15,5 +21,13 @@
     "livekit-client": "1.15.4",
     "@react-three/postprocessing": "2.16.2",
     "postprocessing": "6.36.0"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.4.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/three": "^0.164.0"
   }
 }
